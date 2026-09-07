@@ -14,3 +14,5 @@ paper/*.fdb_latexmk
 paper/*.fls
 paper/*.synctex.gz
 .venv/
+data/tiny-qwen3-standin/
+paper/tables/

@@ -1,5 +1,8 @@
 PY ?= python
 export PYTHONPATH := src:$(PYTHONPATH)
+# Optional: local checkpoint dir used instead of the HF id by the smoke LLM steps (offline machines / the
+# stand-in built by scripts/make_tiny_model.py when huggingface.co is unreachable).
+MODEL_PATH_FLAG := $(if $(TBF_MODEL_PATH),--model-path $(TBF_MODEL_PATH),)
 
 .PHONY: test smoke build-data tsfm summary figures tables paper clean-smoke
 
@@ -8,8 +11,8 @@ test:
 
 smoke:
 	$(PY) -m tbf.tsfm --dataset fixtures --model snaive --out results/smoke_snaive.jsonl
-	$(PY) -m tbf.run --backend hf --model qwen3-0.6b --dataset fixtures --setup direct --think off --limit 4 --out results/smoke_direct_off.jsonl
-	$(PY) -m tbf.run --backend hf --model qwen3-0.6b --dataset fixtures --setup direct --budget 64 --limit 4 --out results/smoke_direct_b64.jsonl
+	$(PY) -m tbf.run --backend hf --model qwen3-0.6b --dataset fixtures --setup direct --think off --limit 4 --out results/smoke_direct_off.jsonl $(MODEL_PATH_FLAG)
+	$(PY) -m tbf.run --backend hf --model qwen3-0.6b --dataset fixtures --setup direct --budget 64 --limit 4 --out results/smoke_direct_b64.jsonl $(MODEL_PATH_FLAG)
 	$(PY) -m tbf.summarize --results-glob "results/smoke_*.jsonl" --dataset fixtures --out results/summary.csv --paired-out results/paired.csv
 	$(PY) scripts/make_figures.py --summary results/summary.csv --paired results/paired.csv --out figures --smoke
 
