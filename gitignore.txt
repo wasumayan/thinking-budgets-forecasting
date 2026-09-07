@@ -1,0 +1,16 @@
+results/*.jsonl
+data/raw/
+data/freshts26/*.parquet
+data/cik/
+__pycache__/
+*.pyc
+.pytest_cache/
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.synctex.gz
+.venv/

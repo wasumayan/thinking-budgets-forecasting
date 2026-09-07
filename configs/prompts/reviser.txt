@@ -1,0 +1,17 @@
+## Series
+{metadata}
+
+## Calendar
+US federal holidays in the forecast period: {calendar}
+
+## Recent events (dated; newest first)
+{events}
+
+{reports_section}## History (96 values; date: value)
+{history}
+
+## Statistical model forecast (date: value)
+{prior_forecast}
+
+## Task
+A statistical time-series model that saw only the numbers (no text) produced the forecast above for {h_start} through {h_end} ({freq_desc}). Using the series description, calendar, events, and reports, revise the forecast where the context warrants a change and keep it where it does not. Return exactly one JSON object of the form {"forecast": [v1, v2, ..., v12]} containing 12 numbers in order, and nothing else after it.

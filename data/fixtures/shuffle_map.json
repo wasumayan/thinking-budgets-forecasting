@@ -1,0 +1,14 @@
+{
+ "web__Influenza__2025-09-05": "macro__DCOILWTICO__2026-04-10",
+ "web__Bitcoin__2025-10-15": "health__hhs3__2026-01-03",
+ "web__OPEC__2025-11-20": "macro__DGS10__2025-12-05",
+ "health__nat__2025-11-29": "web__Bitcoin__2025-10-15",
+ "health__hhs3__2026-01-03": "web__OPEC__2025-11-20",
+ "health__ca__2026-02-07": "energy__GASREGW__2025-09-08",
+ "energy__GASREGW__2025-09-08": "macro__DGS10__2025-12-05",
+ "energy__WCESTUS1__2025-10-06": "web__OPEC__2025-11-20",
+ "energy__WCRFPUS2__2026-03-02": "macro__DEXUSEU__2025-09-12",
+ "macro__DEXUSEU__2025-09-12": "web__Influenza__2025-09-05",
+ "macro__DGS10__2025-12-05": "web__OPEC__2025-11-20",
+ "macro__DCOILWTICO__2026-04-10": "web__Influenza__2025-09-05"
+}

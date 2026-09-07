@@ -1,0 +1,184 @@
+# FreshTS-26 series registry. Authoritative list; the builder reads only this file.
+# Every series: id, domain, cluster, source, fetch spec, freq (D|B|W), seasonality m,
+# precision (decimals for prompt rendering), keywords (event matching), event_categories.
+#
+# Window rules (SPEC §2.1): T=96, H=12, origin >= 2025-08-01, stride 24 (D/B) or 4 (W).
+# Wikipedia titles must be canonical (underscores, redirect-resolved); all existed before 2024.
+
+defaults:
+  T: 96
+  H: 12
+  min_origin: "2025-08-01"
+  strict_origin: "2026-07-01"
+  stride: { D: 24, B: 24, W: 4 }
+  seasonality: { D: 7, B: 1, W: 1 }
+  events_lookback_days: 28
+  events_max: 10
+  max_missing_frac: 0.05
+  # Wikipedia Current-events categories as they appear in the portal wikitext
+  all_event_categories:
+    - "Armed conflicts and attacks"
+    - "Arts and culture"
+    - "Business and economy"
+    - "Disasters and accidents"
+    - "Health and environment"
+    - "International relations"
+    - "Law and crime"
+    - "Politics and elections"
+    - "Science and technology"
+    - "Sports"
+
+sources:
+  wikimedia_pageviews:
+    url: "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/{title}/daily/{start}/{end}"
+    start: "20240101"        # fetch from 2024-01-01 so the first 96-day context exists
+    user_agent: "FreshTS-26 research dataset builder (contact: <EMAIL>)"
+  wikipedia_summary_asof:
+    revisions_api: "https://en.wikipedia.org/w/api.php?action=query&prop=revisions&titles={title}&rvlimit=1&rvdir=older&rvstart=2025-07-31T23:59:59Z&rvprop=ids|timestamp&format=json&formatversion=2"
+    parse_api: "https://en.wikipedia.org/w/api.php?action=parse&oldid={revid}&prop=text&section=0&format=json&formatversion=2"
+    fallback_summary: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
+  current_events:
+    parse_api: "https://en.wikipedia.org/w/api.php?action=parse&page=Portal:Current_events/{year}_{month_name}_{day}&prop=wikitext&format=json&formatversion=2"
+    start: "2025-06-01"
+  fred_csv:
+    url: "https://fred.stlouisfed.org/graph/fredgraph.csv?id={id}"
+    notes_url: "https://fred.stlouisfed.org/series/{id}"     # scrape the Notes block; or use the API with a key if available
+  delphi_fluview:
+    url: "https://delphi.cmu.edu/epidata/fluview/?regions={regions}&epiweeks=202301-{last_epiweek}"
+    value_field: "ili"      # 'wili' only exists for nat/hhs; 'ili' exists for all
+  cdc_fluview_reports:      # tier 2
+    url: "https://www.cdc.gov/fluview/surveillance/{year}-week-{week:02d}.html"
+    available_at_rule: "friday_of_following_week"
+  eia_wpsr:                 # tier 2
+    archive_url: "https://www.eia.gov/petroleum/supply/weekly/archive/{year}/{year}_{month:02d}_{day:02d}/pdf/highlights.pdf"
+    available_at_rule: "wednesday_1030_ET_release"
+
+# ------------------------------------------------------------------------------------
+# WEB (Wikipedia daily user pageviews). 6 clusters x 10. m=7.
+# keywords: substring match (case-insensitive) in event bullet text OR wikilink == title.
+# ------------------------------------------------------------------------------------
+web_clusters:
+  health:
+    keywords: [influenza, flu, measles, covid, coronavirus, mpox, monkeypox, rsv, "bird flu", h5n1, norovirus, dengue, "whooping cough", pertussis, ebola, outbreak, epidemic, pandemic, vaccine, cdc, who]
+    event_categories: ["Health and environment", "Disasters and accidents", "Science and technology"]
+    titles: [Influenza, Measles, COVID-19, Mpox, Respiratory_syncytial_virus, Avian_influenza, Norovirus, Dengue_fever, Whooping_cough, Ebola]
+  economy:
+    keywords: [bitcoin, crypto, inflation, tariff, "federal reserve", fed, "interest rate", recession, unemployment, jobs, "stock market", ethereum, gold, treasury, gdp, cpi]
+    event_categories: ["Business and economy", "Politics and elections", "International relations"]
+    titles: [Bitcoin, Inflation, Tariff, Federal_Reserve, Recession, Unemployment, Stock_market_crash, Ethereum, Gold, Interest_rate]
+  energy:
+    keywords: [gasoline, gas price, opec, oil, crude, petroleum, "natural gas", lng, hurricane, "heat wave", heatwave, wildfire, nuclear, solar, "electric vehicle", ev, pipeline, refinery, blackout]
+    event_categories: ["Business and economy", "Disasters and accidents", "Health and environment", "Science and technology"]
+    titles: [Gasoline, OPEC, Petroleum, Natural_gas, Atlantic_hurricane_season, Heat_wave, Wildfire, Nuclear_power, Solar_power, Electric_vehicle]
+  geopolitics:
+    keywords: ["united nations", nato, "european union", eu, "supreme court", congress, senate, israel, gaza, ukraine, russia, iran, taiwan, "north korea", sanction, ceasefire, election]
+    event_categories: ["Armed conflicts and attacks", "International relations", "Politics and elections", "Law and crime"]
+    titles: [United_Nations, NATO, European_Union, Supreme_Court_of_the_United_States, United_States_Congress, Israel, Ukraine, Iran, Taiwan, North_Korea]
+  science_tech:
+    keywords: ["artificial intelligence", ai, spacex, starship, nasa, nvidia, openai, chatgpt, quantum, "space station", moon, artemis, mars, crispr, "gene editing", launch, rocket]
+    event_categories: ["Science and technology", "Business and economy"]
+    titles: [Artificial_intelligence, SpaceX, NASA, Nvidia, OpenAI, Quantum_computing, International_Space_Station, Moon, Mars, CRISPR]
+  sports_entertainment:
+    keywords: ["world cup", fifa, "super bowl", nfl, olympic, wimbledon, tennis, "tour de france", cycling, oscar, "academy award", eurovision, nba, "world series", mlb, "formula one", f1, "grand prix", final, champion]
+    event_categories: ["Sports", "Arts and culture"]
+    titles: [FIFA_World_Cup, Super_Bowl, Olympic_Games, Wimbledon_Championships, Tour_de_France, Academy_Awards, Eurovision_Song_Contest, NBA_Finals, World_Series, Formula_One]
+
+# ------------------------------------------------------------------------------------
+# HEALTH (ILINet weekly % ILI). m=1 (fev convention for weekly). Week-ending Saturday dates.
+# ------------------------------------------------------------------------------------
+health:
+  source: delphi_fluview
+  freq: W
+  precision: 2
+  regions: [nat, hhs1, hhs2, hhs3, hhs4, hhs5, hhs6, hhs7, hhs8, hhs9, hhs10,
+            ca, tx, ny, il, pa, oh, ga, nc, mi, nj, va, wa, az, ma, tn, in, mo, md, wi, co]
+  region_names:
+    nat: "United States (national)"
+    hhs1: "HHS Region 1 (New England)"
+    hhs2: "HHS Region 2 (NY, NJ, PR, VI)"
+    hhs3: "HHS Region 3 (Mid-Atlantic)"
+    hhs4: "HHS Region 4 (Southeast)"
+    hhs5: "HHS Region 5 (Great Lakes)"
+    hhs6: "HHS Region 6 (South Central)"
+    hhs7: "HHS Region 7 (Central Plains)"
+    hhs8: "HHS Region 8 (Mountain)"
+    hhs9: "HHS Region 9 (Pacific Southwest)"
+    hhs10: "HHS Region 10 (Pacific Northwest)"
+  metadata_template: "Percentage of outpatient visits for influenza-like illness (ILI) reported to the U.S. Outpatient Influenza-like Illness Surveillance Network (ILINet), {region_name}. Weekly; each value is the week ending on the given Saturday. Source: CDC FluView via Delphi Epidata."
+  keywords: [influenza, flu, "flu season", ili, respiratory, covid, rsv, "bird flu", h5n1, vaccine, cdc, hospitalization, outbreak, measles]
+  event_categories: ["Health and environment", "Disasters and accidents", "Science and technology"]
+  reports_source: cdc_fluview_reports   # tier 2
+
+# ------------------------------------------------------------------------------------
+# ENERGY (EIA weekly via FRED). m=1.
+# ------------------------------------------------------------------------------------
+energy:
+  source: fred_csv
+  freq: W
+  precision: 2
+  ids:
+    GASREGW:  "US Regular All Formulations Gas Price ($/gallon)"
+    GASDESW:  "US No 2 Diesel Retail Prices ($/gallon)"
+    WCESTUS1: "Weekly U.S. Ending Stocks excluding SPR of Crude Oil (thousand barrels)"
+    WGTSTUS1: "Weekly U.S. Ending Stocks of Total Gasoline (thousand barrels)"
+    WDISTUS1: "Weekly U.S. Ending Stocks of Distillate Fuel Oil (thousand barrels)"
+    WCRFPUS2: "Weekly U.S. Field Production of Crude Oil (thousand barrels per day)"
+    WGFUPUS2: "Weekly U.S. Product Supplied of Finished Motor Gasoline (thousand barrels per day)"
+  keywords: [gasoline, "gas price", diesel, opec, oil, crude, petroleum, refinery, hurricane, pipeline, sanction, iran, russia, saudi, "strategic petroleum reserve", spr, tariff, "natural gas"]
+  event_categories: ["Business and economy", "Disasters and accidents", "International relations", "Armed conflicts and attacks"]
+  reports_source: eia_wpsr   # tier 2
+
+# ------------------------------------------------------------------------------------
+# MACRO (FRED). Business-daily (m=1) and two weekly labor series (m=1).
+# ------------------------------------------------------------------------------------
+macro:
+  source: fred_csv
+  daily_ids:                 # freq B, precision 4 for FX, 2 for yields/prices
+    DEXUSEU: { title: "U.S. Dollars to Euro Spot Exchange Rate", precision: 4 }
+    DEXJPUS: { title: "Japanese Yen to U.S. Dollar Spot Exchange Rate", precision: 2 }
+    DEXUSUK: { title: "U.S. Dollars to U.K. Pound Sterling Spot Exchange Rate", precision: 4 }
+    DEXCAUS: { title: "Canadian Dollars to U.S. Dollar Spot Exchange Rate", precision: 4 }
+    DEXCHUS: { title: "Chinese Yuan Renminbi to U.S. Dollar Spot Exchange Rate", precision: 4 }
+    DEXMXUS: { title: "Mexican Pesos to U.S. Dollar Spot Exchange Rate", precision: 4 }
+    DEXINUS: { title: "Indian Rupees to U.S. Dollar Spot Exchange Rate", precision: 4 }
+    DEXBZUS: { title: "Brazilian Reals to U.S. Dollar Spot Exchange Rate", precision: 4 }
+    DEXKOUS: { title: "South Korean Won to U.S. Dollar Spot Exchange Rate", precision: 2 }
+    DEXSZUS: { title: "Swiss Francs to U.S. Dollar Spot Exchange Rate", precision: 4 }
+    DEXUSAL: { title: "U.S. Dollars to Australian Dollar Spot Exchange Rate", precision: 4 }
+    DEXSFUS: { title: "South African Rand to U.S. Dollar Spot Exchange Rate", precision: 4 }
+    DGS2:    { title: "Market Yield on U.S. Treasury Securities at 2-Year Constant Maturity (%)", precision: 2 }
+    DGS10:   { title: "Market Yield on U.S. Treasury Securities at 10-Year Constant Maturity (%)", precision: 2 }
+    DGS30:   { title: "Market Yield on U.S. Treasury Securities at 30-Year Constant Maturity (%)", precision: 2 }
+    DCOILWTICO:   { title: "Crude Oil Prices: West Texas Intermediate (WTI) - Cushing, Oklahoma ($/barrel)", precision: 2 }
+    DCOILBRENTEU: { title: "Crude Oil Prices: Brent - Europe ($/barrel)", precision: 2 }
+    DHHNGSP:      { title: "Henry Hub Natural Gas Spot Price ($/million BTU)", precision: 2 }
+  weekly_ids:                # freq W
+    ICSA: { title: "Initial Claims (seasonally adjusted)", precision: 0 }
+    CCSA: { title: "Continued Claims (Insured Unemployment, seasonally adjusted)", precision: 0 }
+  keywords:
+    fx: [dollar, euro, yen, pound, yuan, peso, rupee, real, won, franc, "central bank", "federal reserve", fed, ecb, "bank of japan", "interest rate", "rate cut", "rate hike", tariff, trade, inflation, sanction]
+    rates: ["federal reserve", fed, "interest rate", "rate cut", "rate hike", treasury, inflation, cpi, jobs, unemployment, "debt ceiling", shutdown, tariff, recession]
+    energy_price: [oil, crude, opec, brent, wti, "natural gas", lng, pipeline, sanction, iran, russia, saudi, hurricane, refinery, tariff]
+    labor: [unemployment, jobs, layoffs, "jobless claims", strike, shutdown, recession, hiring, "federal workers"]
+  keyword_group_by_id:
+    DEXUSEU: fx
+    DEXJPUS: fx
+    DEXUSUK: fx
+    DEXCAUS: fx
+    DEXCHUS: fx
+    DEXMXUS: fx
+    DEXINUS: fx
+    DEXBZUS: fx
+    DEXKOUS: fx
+    DEXSZUS: fx
+    DEXUSAL: fx
+    DEXSFUS: fx
+    DGS2: rates
+    DGS10: rates
+    DGS30: rates
+    DCOILWTICO: energy_price
+    DCOILBRENTEU: energy_price
+    DHHNGSP: energy_price
+    ICSA: labor
+    CCSA: labor
+  event_categories: ["Business and economy", "International relations", "Politics and elections", "Armed conflicts and attacks"]

@@ -1,0 +1,15 @@
+[
+  {"name": "clean", "answer": "{\"forecast\": [1,2,3,4,5,6,7,8,9,10,11,12]}", "valid": true, "first": 1},
+  {"name": "fenced", "answer": "```json\n{\"forecast\": [1.5,2,3,4,5,6,7,8,9,10,11,12]}\n```", "valid": true, "first": 1.5},
+  {"name": "prose_then_json", "answer": "Based on the trend, here is my forecast:\n{\"forecast\": [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111]}", "valid": true, "first": 100},
+  {"name": "eleven_values_padded", "answer": "{\"forecast\": [1,2,3,4,5,6,7,8,9,10,11]}", "valid": true, "mismatch": true, "first": 1},
+  {"name": "thirteen_values_truncated", "answer": "{\"forecast\": [1,2,3,4,5,6,7,8,9,10,11,12,13]}", "valid": true, "mismatch": true, "first": 1},
+  {"name": "trailing_comma", "answer": "{\"forecast\": [1,2,3,4,5,6,7,8,9,10,11,12,]}", "valid": true, "first": 1},
+  {"name": "strings_with_commas", "answer": "{\"forecast\": [\"12,345\",\"12,400\",\"12,500\",\"12,600\",\"12,700\",\"12,800\",\"12,900\",\"13,000\",\"13,100\",\"13,200\",\"13,300\",\"13,400\"]}", "valid": true, "first": 12345},
+  {"name": "bare_list", "answer": "[1,2,3,4,5,6,7,8,9,10,11,12]", "valid": true, "first": 1},
+  {"name": "empty", "answer": "", "valid": false},
+  {"name": "no_json", "answer": "I cannot forecast this series.", "valid": false},
+  {"name": "too_few", "answer": "{\"forecast\": [1,2,3]}", "valid": false},
+  {"name": "nan_value", "answer": "{\"forecast\": [1,2,3,4,5,6,7,8,9,10,11,\"NaN\"]}", "valid": false},
+  {"name": "think_leftover_then_json", "answer": "</think>\n\n{\"forecast\": [3,3,3,3,3,3,3,3,3,3,3,3]}", "valid": true, "first": 3}
+]

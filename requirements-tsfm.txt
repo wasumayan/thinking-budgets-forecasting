@@ -1,0 +1,19 @@
+# env B (CPU or GPU): TSFM baselines, metrics, data build, figures, tests, CPU smoke path. Python 3.11.
+chronos-forecasting==2.3.1
+timesfm[torch]==3.0.1
+tirex-ts==1.4.2
+fev==0.10.0
+torch>=2.2
+transformers>=4.51
+accelerate>=0.30
+datasets>=2.19
+pandas>=2.2
+pyarrow>=17
+numpy>=1.26
+scipy>=1.12
+pyyaml>=6
+tqdm>=4.66
+requests>=2.31
+holidays>=0.50
+matplotlib>=3.8
+pytest>=8

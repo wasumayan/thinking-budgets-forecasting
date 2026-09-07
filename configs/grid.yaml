@@ -1,0 +1,61 @@
+# Conditions grid. `scripts/expand_grid.py --tier N` expands this into a list of config ids.
+# config_id format: {dataset}__{model_short}__{setup}__{think}__{ctx}__s{seed}[__n{n}][__prior-{p}]
+#   think ∈ {off, b512, b2048, b8192}; ctx ∈ {full, none, shuffled}; n = n_samples (omitted when 1);
+#   prior only for setup=reviser when prior != chronos2.
+# Any edit here must be mirrored in SPEC.md §5 first.
+
+models:
+  qwen3-8b:   { hf: "Qwen/Qwen3-8B",   family: qwen3, hybrid: true,  max_model_len: 40960 }
+  qwen3-4b:   { hf: "Qwen/Qwen3-4B",   family: qwen3, hybrid: true,  max_model_len: 40960 }
+  qwen3-1.7b: { hf: "Qwen/Qwen3-1.7B", family: qwen3, hybrid: true,  max_model_len: 40960 }
+  qwen3-0.6b: { hf: "Qwen/Qwen3-0.6B", family: qwen3, hybrid: true,  max_model_len: 40960, smoke_only: true }
+  qwen3-4b-think2507: { hf: "Qwen/Qwen3-4B-Thinking-2507", family: qwen3, hybrid: false, thinking_only: true,  max_model_len: 40960 }
+  qwen3-4b-inst2507:  { hf: "Qwen/Qwen3-4B-Instruct-2507", family: qwen3, hybrid: false, thinking_only: false, max_model_len: 40960 }
+  gemma3-4b:  { hf: "google/gemma-3-4b-it", family: gemma3, hybrid: false, thinking_only: false, max_model_len: 32768 }
+  llama31-8b: { hf: "meta-llama/Llama-3.1-8B-Instruct", family: llama3, hybrid: false, thinking_only: false, max_model_len: 32768, gated: true }
+  qwen3-30b-a3b: { hf: "Qwen/Qwen3-30B-A3B", family: qwen3, hybrid: true, max_model_len: 16384, gpu_mem_util: 0.95, stretch: true }
+
+sampling:
+  thinking_on:  { temperature: 0.6, top_p: 0.95, top_k: 20, min_p: 0.0 }
+  thinking_off: { temperature: 0.7, top_p: 0.8,  top_k: 20, min_p: 0.0 }
+  answer_max_tokens: 1024
+  early_stop_text: "\n\nConsidering the limited time by the user, I have to give the solution based on the thinking directly now.\n</think>\n\n"
+
+priors:
+  chronos2:  { hf: "amazon/chronos-2" }
+  timesfm25: { hf: "google/timesfm-2.5-200m-pytorch" }
+  tirex:     { hf: "NX-AI/TiRex" }
+
+baselines:            # no LLM; produced by src/tbf/tsfm.py
+  - { dataset: freshts26, model: snaive }
+  - { dataset: freshts26, model: chronos2 }
+  - { dataset: freshts26, model: timesfm25 }
+  - { dataset: freshts26, model: tirex }
+  - { dataset: cik,       model: snaive,   tier: 3 }
+  - { dataset: cik,       model: chronos2, tier: 3 }
+
+tiers:
+  1:
+    - { dataset: freshts26, models: [qwen3-8b, qwen3-4b, qwen3-1.7b], setups: [direct, reviser], think: ["off", "b512", "b2048", "b8192"], ctx: [full], n_samples: 1, seeds: [0] }
+    - { dataset: freshts26, models: [qwen3-8b, qwen3-4b, qwen3-1.7b], setups: [direct, reviser], think: ["off"], ctx: [full], n_samples: 5, seeds: [0] }
+  2:
+    - { dataset: freshts26, models: [qwen3-8b, qwen3-4b], setups: [direct, reviser], think: ["off", "b2048"], ctx: [none, shuffled], n_samples: 1, seeds: [0] }
+    - { dataset: freshts26, models: [qwen3-8b], setups: [direct], think: ["off", "b2048"], ctx: [full], n_samples: 1, seeds: [1, 2] }
+    - { dataset: freshts26, models: [qwen3-8b], setups: [reviser], think: ["off", "b2048"], ctx: [full], n_samples: 1, seeds: [0], priors: [timesfm25, tirex] }
+  3:
+    - { dataset: cik, models: [qwen3-8b, qwen3-4b], setups: [direct], think: ["off", "b2048", "b8192"], ctx: [full], n_samples: 5, seeds: [0] }
+    - { dataset: freshts26, models: [qwen3-4b-think2507], setups: [direct, reviser], think: ["b2048", "b8192"], ctx: [full], n_samples: 1, seeds: [0] }
+    - { dataset: freshts26, models: [qwen3-4b-inst2507, gemma3-4b, llama31-8b], setups: [direct, reviser], think: ["off"], ctx: [full], n_samples: 1, seeds: [0] }
+    - { dataset: freshts26, models: [qwen3-30b-a3b], setups: [direct], think: ["off", "b2048"], ctx: [full], n_samples: 1, seeds: [0], stretch: true }
+
+derived:              # computed in summarize.py from existing results, no compute
+  - { name: avgens_off,   components: ["chronos2", "{model}__direct__off__full__s0"] }
+  - { name: avgens_b2048, components: ["chronos2", "{model}__direct__b2048__full__s0"] }
+
+budgets: { b512: 512, b2048: 2048, b8192: 8192 }
+
+slurm_time:           # wall-time per config by think level (hh:mm:ss); 5-sample configs x3
+  "off": "01:00:00"
+  b512: "01:00:00"
+  b2048: "02:00:00"
+  b8192: "04:00:00"

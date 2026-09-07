@@ -1,0 +1,14 @@
+## Series
+{metadata}
+
+## Calendar
+US federal holidays in the forecast period: {calendar}
+
+## Recent events (dated; newest first)
+{events}
+
+{reports_section}## History (96 values; date: value)
+{history}
+
+## Task
+Forecast the next 12 values, for {h_start} through {h_end} ({freq_desc}). Return exactly one JSON object of the form {"forecast": [v1, v2, ..., v12]} containing 12 numbers in order, and nothing else after it.
