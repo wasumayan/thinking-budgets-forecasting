@@ -178,6 +178,10 @@ def per_window_metrics(df: pd.DataFrame, wins: dict[str, dict[str, dict]]) -> pd
             "budget_hit": bool(r.budget_hit) if r.budget_hit == r.budget_hit else False,
             "n_events": int(w.get("n_events") or 0), "strict_2026": bool(w.get("strict_2026", False)),
         }
+        if r.dataset == "cik" and isinstance(r.samples, list) and r.samples and "metric_scaling" in w:
+            from .data.cik import rcrps_one
+            rec["rcrps"] = rcrps_one(w, np.asarray(r.samples, float))["metric"]
+            rec["rcrps_weight"] = float(__import__("fractions").Fraction(str(w.get("weight") or "1")))
         q = None
         if isinstance(r.quantiles, list) and r.quantiles:
             q = np.asarray(r.quantiles, float)  # [H, 9]
@@ -188,7 +192,11 @@ def per_window_metrics(df: pd.DataFrame, wins: dict[str, dict[str, dict]]) -> pd
         recs.append(rec)
     if missing:
         log.warning("%d result rows had no matching window (or wrong horizon) and were skipped", missing)
-    return pd.DataFrame(recs)
+    df = pd.DataFrame(recs)
+    for col in ("rcrps", "rcrps_weight"):
+        if col not in df:
+            df[col] = np.nan
+    return df
 
 
 # ----------------------------------------------------------------------------------------------------------
@@ -225,7 +233,10 @@ def aggregate_cell(cell: pd.DataFrame, base: pd.DataFrame | None, window_weighte
            "valid_rate": float(cell.valid.mean()), "mean_thinking_tokens": float(cell.thinking_tokens_used.mean()),
            "mean_answer_tokens": float(cell.answer_tokens.mean()), "budget_hit_rate": float(cell.budget_hit.mean()),
            "n_windows": int(len(cell)), "n_series": int(cell.series_id.nunique()),
-           "n_mase_nan": int(cell.mase.isna().sum())}
+           "n_mase_nan": int(cell.mase.isna().sum()), "rcrps": np.nan}
+    if cell.rcrps.notna().any():  # CiK: weighted mean of min(RCRPS, 5) (docs/verify-datasets.md §3.4)
+        c = cell[cell.rcrps.notna()]
+        out["rcrps"] = float((c.rcrps.clip(upper=5.0) * c.rcrps_weight).sum() / c.rcrps_weight.sum())
     if base is None or base.empty:
         return out
     if not window_weighted:
@@ -286,7 +297,7 @@ def summarize(pw: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     summ["seed_sd"] = np.nan
     summ["n_seeds"] = 1
     summ = pd.concat([summ, seed_rows(summ)], ignore_index=True)
-    cols = ["config_id", "domain", "stratum", "rel_mase", "rel_mase_lo", "rel_mase_hi", "mase", "wql",
+    cols = ["config_id", "domain", "stratum", "rel_mase", "rel_mase_lo", "rel_mase_hi", "mase", "wql", "rcrps",
             "win_rate_vs_snaive", "valid_rate", "mean_thinking_tokens", "mean_answer_tokens", "budget_hit_rate",
             "n_windows", "n_series", "n_mase_nan", "seed_sd", "n_seeds", "kind", "dataset", "model", "setup", "think",
             "budget", "context_mode", "n_samples", "seed", "prior"]

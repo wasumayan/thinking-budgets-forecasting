@@ -3,6 +3,7 @@ data/raw/
 data/freshts26/*.parquet
 data/cik/
 __pycache__/
+!logs/.gitkeep
 *.pyc
 .pytest_cache/
 paper/*.aux

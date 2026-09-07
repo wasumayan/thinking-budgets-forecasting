@@ -4,7 +4,7 @@ export PYTHONPATH := src:$(PYTHONPATH)
 # stand-in built by scripts/make_tiny_model.py when huggingface.co is unreachable).
 MODEL_PATH_FLAG := $(if $(TBF_MODEL_PATH),--model-path $(TBF_MODEL_PATH),)
 
-.PHONY: test smoke build-data tsfm summary figures tables paper clean-smoke
+.PHONY: test smoke preflight build-data tsfm summary figures tables paper clean-smoke
 
 test:
 	$(PY) -m pytest -q tests
@@ -15,6 +15,9 @@ smoke:
 	$(PY) -m tbf.run --backend hf --model qwen3-0.6b --dataset fixtures --setup direct --budget 64 --limit 4 --out results/smoke_direct_b64.jsonl $(MODEL_PATH_FLAG)
 	$(PY) -m tbf.summarize --results-glob "results/smoke_*.jsonl" --dataset fixtures --out results/summary.csv --paired-out results/paired.csv
 	$(PY) scripts/make_figures.py --summary results/summary.csv --paired results/paired.csv --out figures --smoke
+
+preflight:   # needs internet: one request per data endpoint + Qwen3-0.6B tokenizer load, PASS/FAIL per item
+	$(PY) scripts/preflight.py
 
 build-data:
 	$(PY) -m tbf.data.build_freshts26 --series configs/series.yaml --out data/freshts26

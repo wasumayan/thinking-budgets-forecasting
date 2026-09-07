@@ -25,10 +25,19 @@ def _to_py(v: Any):
     return v
 
 
+def _ts_strs(ts: list) -> list[str]:
+    """Dates as 'YYYY-MM-DD'; if any stamp in the list has a non-midnight time, all keep 'YYYY-MM-DD HH:MM'."""
+    ss = [str(_to_py(t)) for t in ts]
+    sub_daily = any(len(s) >= 16 and s[10] in "T " and s[11:16] != "00:00" for s in ss)
+    if sub_daily:
+        return [(s[:16].replace("T", " ") if len(s) >= 16 and s[10] in "T " else s[:10] + " 00:00") for s in ss]
+    return [s[:10] for s in ss]
+
+
 def _normalize(row: dict) -> dict:
     w = {k: _to_py(v) for k, v in row.items()}
     for key in ("context_ts", "target_ts"):
-        w[key] = [str(_to_py(t))[:10] for t in (w.get(key) or [])]
+        w[key] = _ts_strs(list(w.get(key) or []))
     w["context"] = [float(x) for x in w["context"]]
     w["target"] = [float(x) for x in w["target"]]
     for key in ("events", "reports"):
