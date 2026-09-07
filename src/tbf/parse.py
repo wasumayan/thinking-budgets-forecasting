@@ -46,17 +46,18 @@ def _coerce_list(obj) -> list[float] | None:
     return out
 
 
-def _fix_length(vals: list[float]) -> tuple[list[float] | None, bool]:
-    if len(vals) == H:
+def _fix_length(vals: list[float], h: int = H) -> tuple[list[float] | None, bool]:
+    if len(vals) == h:
         return vals, False
-    if H - 1 <= len(vals) <= H + 1:
-        if len(vals) > H:
-            return vals[:H], True
-        return vals + [vals[-1]] * (H - len(vals)), True
+    if h - 1 <= len(vals) <= h + 1:
+        if len(vals) > h:
+            return vals[:h], True
+        return vals + [vals[-1]] * (h - len(vals)), True
     return None, True
 
 
-def parse_forecast(answer: str) -> ParsedForecast:
+def parse_forecast(answer: str, h: int = H) -> ParsedForecast:
+    """`h` = expected horizon length (12 for FreshTS-26; task-specific for CiK, see data/cik.py)."""
     if not answer or not answer.strip():
         return ParsedForecast(None, False, False, "empty")
     text = answer.strip()
@@ -75,7 +76,7 @@ def parse_forecast(answer: str) -> ParsedForecast:
         vals = _coerce_list(obj)
         if vals is None or len(vals) == 0:
             continue
-        fixed, mismatch = _fix_length(vals)
+        fixed, mismatch = _fix_length(vals, h)
         if fixed is None:
             return ParsedForecast(None, False, True, f"bad_length_{len(vals)}")
         return ParsedForecast(fixed, True, mismatch, "")
@@ -87,7 +88,7 @@ def parse_forecast(answer: str) -> ParsedForecast:
         except json.JSONDecodeError:
             vals = None
         if vals:
-            fixed, mismatch = _fix_length(vals)
+            fixed, mismatch = _fix_length(vals, h)
             if fixed is not None:
                 return ParsedForecast(fixed, True, mismatch, "bare_list")
     return ParsedForecast(None, False, False, "no_json")
