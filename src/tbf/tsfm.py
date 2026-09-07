@@ -69,7 +69,7 @@ class _Forecaster:
             quantiles, mean = self.pipe.predict_quantiles(
                 [np.asarray(c, dtype=np.float32) for c in contexts], prediction_length=H,
                 quantile_levels=list(QUANTILE_LEVELS))
-            q = np.stack([np.asarray(t)[0] for t in quantiles])  # each (1, H, Q) -> (H, Q)
+            q = np.stack([np.asarray(t.cpu() if hasattr(t, "cpu") else t)[0] for t in quantiles])  # each (1, H, Q) -> (H, Q)
         elif self.name == "timesfm25":
             _, quantile_forecast = self.model.forecast(horizon=H, inputs=[np.asarray(c, dtype=np.float32) for c in contexts])
             q = np.asarray(quantile_forecast)[..., 1:10]  # (B, H, 9): drop the leading mean channel
@@ -96,9 +96,11 @@ def make_row(dataset: str, model: str, w: dict, point: np.ndarray, q, wall_s: fl
 
 
 def run(dataset: str, model: str, out: str | pathlib.Path, limit: int | None = None, batch_size: int = BATCH_SIZE) -> int:
+    from .run import evenly_spaced  # local import: run.py imports load_prior from this module
+
     windows = load_windows(dataset)
     if limit:
-        windows = windows[:limit]
+        windows = evenly_spaced(windows, limit)
     done = done_window_ids(out)
     todo = [w for w in windows if w["window_id"] not in done]
     log.info("%s/%s: %d windows, %d already done, %d to do", dataset, model, len(windows), len(done), len(todo))

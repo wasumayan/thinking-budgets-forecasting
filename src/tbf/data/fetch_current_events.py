@@ -10,7 +10,8 @@ daily_events(date) -> list[dict(date, category, text, links, available_at)]
 all_events(start="2025-06-01", end=<today>) -> list[dict]  (one fetch per day, cached)
 match_events(events, window_origin, lookback_days, title=None, keywords=(), categories=None, k=10) -> list[dict]
   Filter events with origin-lookback < date <= origin; keep if (title and title in links) or any keyword
-  (case-insensitive, word-boundary for tokens of length <= 3 like 'eu', 'ai', 'ev', 'fed', 'f1'; substring otherwise)
+  (case-insensitive, whole-word with optional plural suffix, e.g. 'tariff' matches 'tariffs' but 'gold' does not
+  match 'golden')
   in text, and category in categories when categories is given; newest first; truncate to k.
 
 Implementation notes: a bullet that is immediately followed by a deeper bullet is a topic heading (e.g.
@@ -135,7 +136,7 @@ def _keyword_regex(keywords) -> re.Pattern | None:
         kw = str(kw).strip()
         if not kw:
             continue
-        parts.append(rf"\b{re.escape(kw)}\b" if len(kw) <= 3 else re.escape(kw))
+        parts.append(rf"\b{re.escape(kw)}(?:e?s)?\b")
     return re.compile("|".join(parts), re.IGNORECASE) if parts else None
 
 

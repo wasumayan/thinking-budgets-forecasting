@@ -37,7 +37,14 @@ from .prompts import render_messages
 from .tsfm import load_prior
 
 log = logging.getLogger(__name__)
-BATCH_SIZE = 64
+BATCH_SIZE = {"vllm": 256, "hf": 4}
+
+
+def evenly_spaced(items: list, n: int) -> list:
+    if n is None or n >= len(items):
+        return list(items)
+    idx = np.linspace(0, len(items) - 1, num=n).round().astype(int)
+    return [items[i] for i in dict.fromkeys(idx.tolist())]
 RAW_MAX = 2000
 
 
@@ -106,7 +113,8 @@ def make_row(cfg: RunConfig, w: dict, gens, fallback: list[float], wall_s: float
 
 
 def run(cfg: RunConfig, backend_name: str = "vllm", limit: int | None = None, out: str | pathlib.Path | None = None,
-        batch_size: int = BATCH_SIZE, model_path: str | None = None, results_dir: str = "results") -> dict:
+        batch_size: int | None = None, model_path: str | None = None, results_dir: str = "results") -> dict:
+    batch_size = batch_size or BATCH_SIZE[backend_name]
     grid = load_grid()
     _check_model_mode(cfg, grid)
     out = pathlib.Path(out) if out else pathlib.Path(results_dir) / f"{cfg.config_id}.jsonl"
@@ -115,7 +123,7 @@ def run(cfg: RunConfig, backend_name: str = "vllm", limit: int | None = None, ou
 
     windows = load_windows(cfg.dataset)
     if limit:
-        windows = windows[:limit]
+        windows = evenly_spaced(windows, limit)
     by_id = {w["window_id"]: w for w in windows}
     priors = load_prior(cfg.prior, cfg.dataset, results_dir) if cfg.setup == "reviser" else None
     smap = load_shuffle_map(cfg.dataset) if cfg.context_mode == "shuffled" else None
@@ -176,7 +184,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--backend", default="vllm", choices=["vllm", "hf"])
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--out", default=None)
-    ap.add_argument("--batch-size", type=int, default=BATCH_SIZE)
+    ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--results-dir", default="results")
     ap.add_argument("--model-path", default=None, help="local checkpoint dir overriding the HF id (smoke/offline)")
     return ap.parse_args(argv)

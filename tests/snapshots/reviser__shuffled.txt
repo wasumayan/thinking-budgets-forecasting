@@ -5,8 +5,8 @@ Influenza (daily user pageviews, English Wikipedia). Synthetic fixture series fo
 US federal holidays in the forecast period: None
 
 ## Recent events (dated; newest first)
-- 2026-04-07 [Business and economy] The Federal Reserve holds interest rates steady and signals patience.
-- 2026-04-02 [International relations] New tariffs on imported goods take effect.
+- 2025-09-02 [Business and economy] The Federal Reserve holds interest rates steady and signals patience.
+- 2025-08-28 [International relations] New tariffs on imported goods take effect.
 
 ## History (96 values; date: value)
 2025-06-02: 9047

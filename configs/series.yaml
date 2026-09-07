@@ -55,11 +55,12 @@ sources:
 
 # ------------------------------------------------------------------------------------
 # WEB (Wikipedia daily user pageviews). 6 clusters x 10. m=7.
-# keywords: substring match (case-insensitive) in event bullet text OR wikilink == title.
+# keywords: whole-word match (case-insensitive, optional plural suffix) in event bullet text OR wikilink == title.
+# Avoid common English words: they pollute the event/no-event strata used by H2.
 # ------------------------------------------------------------------------------------
 web_clusters:
   health:
-    keywords: [influenza, flu, measles, covid, coronavirus, mpox, monkeypox, rsv, "bird flu", h5n1, norovirus, dengue, "whooping cough", pertussis, ebola, outbreak, epidemic, pandemic, vaccine, cdc, who]
+    keywords: [influenza, flu, measles, covid, coronavirus, mpox, monkeypox, rsv, "bird flu", h5n1, norovirus, dengue, "whooping cough", pertussis, ebola, outbreak, epidemic, pandemic, vaccine, cdc, "world health organization"]
     event_categories: ["Health and environment", "Disasters and accidents", "Science and technology"]
     titles: [Influenza, Measles, COVID-19, Mpox, Respiratory_syncytial_virus, Avian_influenza, Norovirus, Dengue_fever, Whooping_cough, Ebola]
   economy:
@@ -71,15 +72,15 @@ web_clusters:
     event_categories: ["Business and economy", "Disasters and accidents", "Health and environment", "Science and technology"]
     titles: [Gasoline, OPEC, Petroleum, Natural_gas, Atlantic_hurricane_season, Heat_wave, Wildfire, Nuclear_power, Solar_power, Electric_vehicle]
   geopolitics:
-    keywords: ["united nations", nato, "european union", eu, "supreme court", congress, senate, israel, gaza, ukraine, russia, iran, taiwan, "north korea", sanction, ceasefire, election]
+    keywords: ["united nations", nato, "european union", eu, "supreme court", congress, senate, israel, gaza, ukraine, russia, iran, taiwan, "north korea", sanction, ceasefire]
     event_categories: ["Armed conflicts and attacks", "International relations", "Politics and elections", "Law and crime"]
     titles: [United_Nations, NATO, European_Union, Supreme_Court_of_the_United_States, United_States_Congress, Israel, Ukraine, Iran, Taiwan, North_Korea]
   science_tech:
-    keywords: ["artificial intelligence", ai, spacex, starship, nasa, nvidia, openai, chatgpt, quantum, "space station", moon, artemis, mars, crispr, "gene editing", launch, rocket]
+    keywords: ["artificial intelligence", ai, spacex, starship, nasa, nvidia, openai, chatgpt, quantum, "space station", moon, artemis, mars, crispr, "gene editing", rocket]
     event_categories: ["Science and technology", "Business and economy"]
     titles: [Artificial_intelligence, SpaceX, NASA, Nvidia, OpenAI, Quantum_computing, International_Space_Station, Moon, Mars, CRISPR]
   sports_entertainment:
-    keywords: ["world cup", fifa, "super bowl", nfl, olympic, wimbledon, tennis, "tour de france", cycling, oscar, "academy award", eurovision, nba, "world series", mlb, "formula one", f1, "grand prix", final, champion]
+    keywords: ["world cup", fifa, "super bowl", nfl, olympic, wimbledon, tennis, "tour de france", cycling, oscar, "academy award", eurovision, nba, "world series", mlb, "formula one", f1, "grand prix", champion]
     event_categories: ["Sports", "Arts and culture"]
     titles: [FIFA_World_Cup, Super_Bowl, Olympic_Games, Wimbledon_Championships, Tour_de_France, Academy_Awards, Eurovision_Song_Contest, NBA_Finals, World_Series, Formula_One]
 
@@ -156,10 +157,10 @@ macro:
     ICSA: { title: "Initial Claims (seasonally adjusted)", precision: 0 }
     CCSA: { title: "Continued Claims (Insured Unemployment, seasonally adjusted)", precision: 0 }
   keywords:
-    fx: [dollar, euro, yen, pound, yuan, peso, rupee, real, won, franc, "central bank", "federal reserve", fed, ecb, "bank of japan", "interest rate", "rate cut", "rate hike", tariff, trade, inflation, sanction]
+    fx: [dollar, euro, yen, pound, yuan, peso, rupee, "brazilian real", "south korean won", rand, franc, "central bank", "federal reserve", fed, ecb, "bank of japan", "interest rate", "rate cut", "rate hike", tariff, trade, inflation, sanction]
     rates: ["federal reserve", fed, "interest rate", "rate cut", "rate hike", treasury, inflation, cpi, jobs, unemployment, "debt ceiling", shutdown, tariff, recession]
     energy_price: [oil, crude, opec, brent, wti, "natural gas", lng, pipeline, sanction, iran, russia, saudi, hurricane, refinery, tariff]
-    labor: [unemployment, jobs, layoffs, "jobless claims", strike, shutdown, recession, hiring, "federal workers"]
+    labor: [unemployment, jobs, layoffs, "jobless claims", "labor strike", shutdown, recession, hiring, "federal workers"]
   keyword_group_by_id:
     DEXUSEU: fx
     DEXJPUS: fx

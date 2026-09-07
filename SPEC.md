@@ -302,3 +302,14 @@ Recorded before the corresponding code was written (CLAUDE.md non-negotiable 1).
    huggingface.co, `TBF_MODEL_PATH=<dir> make smoke` points the two LLM steps at a local checkpoint
    (`scripts/make_tiny_model.py` builds a tiny Qwen3-architecture stand-in trained to emit valid JSON). The stand-in
    is never used for any paper number.
+7. **Shuffled-context dates (§3 context modes).** In `shuffled` mode the events and reports taken from the mapped
+   source window are re-dated so that (origin − date) is preserved relative to the destination window's origin;
+   the text is unchanged. Without this, the shuffled bullets carried dates from a different period, which would let
+   the model detect the mismatch trivially instead of testing whether irrelevant context helps.
+8. **Keyword matching (§2.1 item 3, `configs/series.yaml`).** Keywords match as whole words with an optional plural
+   suffix (`tariff` matches `tariffs`, `gold` does not match `golden`) instead of substrings. Over-general keywords
+   (`who`, `election`, `launch`, `final`, `real`, `won`, `strike`) were replaced by specific phrases or dropped so
+   they do not pollute the event / no-event strata used by H2.
+9. **`--limit` sampling and batch sizes (§8 go/no-go).** `--limit N` takes N evenly spaced windows over the ordered
+   window list rather than the first N, so a limited run covers all series and dates. The LLM batch size defaults
+   per backend (256 for vLLM, 4 for the HF CPU smoke path) instead of a single constant.

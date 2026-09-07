@@ -78,6 +78,19 @@ def _metadata(window: dict, context_mode: str, h_start: str, h_end: str) -> str:
     return f"{meta} {tail}".strip() if meta else tail
 
 
+def _redate_items(items, src_origin, dst_origin) -> list[dict]:
+    """Shift item dates so that (origin - date) is preserved when items are moved between windows."""
+    import datetime as _dt
+    so, do = _dt.date.fromisoformat(_date(src_origin)), _dt.date.fromisoformat(_date(dst_origin))
+    out = []
+    for it in list(items or []):
+        d = _dt.date.fromisoformat(_date(it["date"]))
+        new = dict(it)
+        new["date"] = (do - (so - d)).isoformat()
+        out.append(new)
+    return out
+
+
 def _events_lines(events) -> str:
     events = list(events or [])
     if not events:
@@ -126,10 +139,14 @@ def render_messages(window: dict, setup: str, context_mode: str, prior_forecast=
         fields["events"] = None
         fields["reports_section"] = ""
     else:
-        src = shuffle_source if context_mode == "shuffled" else window
+        if context_mode == "shuffled":
+            ev = _redate_items(shuffle_source.get("events"), shuffle_source["origin_ts"], window["origin_ts"])
+            rp = _redate_items(shuffle_source.get("reports"), shuffle_source["origin_ts"], window["origin_ts"])
+        else:
+            ev, rp = window.get("events"), window.get("reports")
         fields["calendar"] = str(window.get("calendar") or "None").strip()
-        fields["events"] = _events_lines(src.get("events"))
-        fields["reports_section"] = _reports_section(src.get("reports"))
+        fields["events"] = _events_lines(ev)
+        fields["reports_section"] = _reports_section(rp)
 
     is_cik = window.get("dataset") == "cik" or window.get("domain") == "cik"
     if is_cik and context_mode != "none":
