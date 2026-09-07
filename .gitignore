@@ -3,6 +3,7 @@ data/raw/
 data/freshts26/*.parquet
 data/cik/
 __pycache__/
+!logs/.gitkeep
 *.pyc
 .pytest_cache/
 paper/*.aux
@@ -14,3 +15,5 @@ paper/*.fdb_latexmk
 paper/*.fls
 paper/*.synctex.gz
 .venv/
+data/tiny-qwen3-standin/
+paper/tables/

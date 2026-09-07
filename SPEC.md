@@ -273,3 +273,32 @@ Appendix: full grids, prompts verbatim, dataset card, compute, seeds, nominal vs
 | Budget forcing produces empty answers after the injected phrase | count as `valid=false`; report `budget_hit_rate`; if > 20 % at 512, add a 1024 budget point for 8B |
 | vLLM install friction on Della | Apptainer `docker://vllm/vllm-openai:v0.28.0` (see `docs/verify-models.md` §D) |
 | Someone posts the same study before 9/16 | differentiate on FreshTS-26 + budget forcing + matched compute + context ablation; cite them |
+
+## Deviations (implementation)
+
+Recorded before the corresponding code was written (CLAUDE.md non-negotiable 1). None changes the grid, prompts
+(for FreshTS-26), metrics, seasonality, window rules, or hypotheses.
+
+1. **CiK prompt lengths (§2.2, §4).** `configs/prompts/{direct,reviser}.txt` hard-code "96 values" / "next 12 values" /
+   "12 numbers" / `v12`. CiK histories and horizons are task-specific, so for windows whose lengths are not (96, 12)
+   the renderer substitutes the actual lengths in exactly those four places; everything else is verbatim. CiK windows
+   render only `## Series` (the CiK background/constraints/scenario text, then the frequency + target-period sentence),
+   `## History` and `## Task` (no Calendar / Recent events / Reports sections), per `src/tbf/data/cik.py`.
+   `parse.parse_forecast` gained an optional `h` argument (default 12) for the same reason. FreshTS-26 prompts are
+   unchanged (snapshot-tested).
+2. **Sub-daily timestamps (CiK only).** §4 says dates are ISO `YYYY-MM-DD`; CiK has hourly / 10-minute series, whose
+   stamps are rendered as `YYYY-MM-DD HH:MM` so rows are distinguishable. FreshTS-26 dates are unchanged.
+3. **Baseline for a stratum (§6.2, §7.3).** The seasonal-naive per-series MASE that normalises a summary cell is computed
+   on the *same windows* as the cell (so `valid_only`, `event`, `no_event`, `strict_2026` compare like with like).
+   The 50-window minimum (§6.4) is applied to those four strata; `all` is always reported. The window-weighted variant
+   (`_ww` domains) is the ratio of window means, bootstrapped over windows.
+4. **Current-events topic headings (§2.1 item 3).** A Portal bullet that is only a topic heading with deeper child bullets
+   (e.g. `*[[Gaza war]]`) is not an event by itself; it is skipped, but its wikilinks are inherited by the child bullets
+   so that title matching still works for events filed under a topic.
+5. **Multi-sample rows (§7.2).** For `n_samples > 1`, `thinking_tokens_used` / `answer_tokens` are the mean over samples,
+   `budget_hit` is "any sample", `finished` is "all samples", `samples` stores only the valid parsed samples and
+   `n_valid_samples` is added; `valid` is true when at least one sample parsed.
+6. **Smoke test model (§8 item 2).** `make smoke` uses `Qwen/Qwen3-0.6B` as specified; on a machine that cannot reach
+   huggingface.co, `TBF_MODEL_PATH=<dir> make smoke` points the two LLM steps at a local checkpoint
+   (`scripts/make_tiny_model.py` builds a tiny Qwen3-architecture stand-in trained to emit valid JSON). The stand-in
+   is never used for any paper number.

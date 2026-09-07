@@ -7,6 +7,7 @@ Target: NeurIPS 2026 FMTS workshop. Pre-registration and full design: [`SPEC.md`
 ```
 make test         # unit tests (CPU)
 make smoke        # end-to-end on 12 fixture windows with Qwen3-0.6B on CPU, < 10 min
+make preflight    # internet needed: one request per data endpoint + Qwen3-0.6B tokenizer, PASS/FAIL per item
 make build-data   # build FreshTS-26 (needs internet; run on the cluster login node)
 make summary      # results/*.jsonl -> results/summary.csv, results/paired.csv
 make figures      # figures/*.pdf|png from summary.csv only
