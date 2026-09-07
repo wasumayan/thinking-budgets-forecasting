@@ -45,6 +45,30 @@ def split_think(ids: Sequence[int], tok) -> tuple[str, str, int]:
     return thinking, answer, k
 
 
+def early_stop_prefix_len(early_ids: Sequence[int]) -> int:
+    """Number of injected ids up to and including </think>; these are not the model's own thinking."""
+    early_ids = list(early_ids)
+    return early_ids.index(THINK_END) + 1 if THINK_END in early_ids else len(early_ids)
+
+
+def sample_seeds(seed: int, n_samples: int) -> list[int]:
+    """Per-sample seed = seed * 1000 + sample_index so n_samples > 1 gives distinct draws."""
+    return [seed * 1000 + i for i in range(n_samples)]
+
+
+def render_prompt(tok, messages, thinking: bool, hybrid: bool = True, thinking_only: bool = False) -> str:
+    """apply_chat_template(..., add_generation_prompt=True) with the model-family rules from run.py:
+    hybrid (Qwen3): pass enable_thinking=thinking; thinking-only (Thinking-2507): thinking must be True and the
+    template pre-fills <think>; non-thinking models (Instruct-2507, gemma3, llama31): thinking must be False and
+    enable_thinking is not passed."""
+    if thinking_only and not thinking:
+        raise ValueError("thinking-only model cannot run with thinking=False")
+    if not hybrid and not thinking_only and thinking:
+        raise ValueError("non-thinking model cannot run with thinking=True")
+    kwargs = {"enable_thinking": thinking} if hybrid else {}
+    return tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, **kwargs)
+
+
 def two_pass_budgeted(llm, tok, prompt_ids: list[list[int]], budget: int, answer_max_tokens: int,
                       sampling: dict[str, Any], seeds: list[int]) -> list[Generation]:
     """Qwen's official recipe, batched.
@@ -81,7 +105,7 @@ def two_pass_budgeted(llm, tok, prompt_ids: list[list[int]], budget: int, answer
             results[i] = list(o.prompt_token_ids[plen:]) + list(o.outputs[0].token_ids)
 
     # tokens of the injected string up to and including </think> are not the model's own thinking
-    early_prefix_len = early_ids.index(THINK_END) + 1 if THINK_END in early_ids else len(early_ids)
+    early_prefix_len = early_stop_prefix_len(early_ids)
     gens = []
     for i, ids in enumerate(results):
         thinking, answer, k = split_think(ids, tok)
@@ -96,10 +120,11 @@ def two_pass_budgeted(llm, tok, prompt_ids: list[list[int]], budget: int, answer
 
 class VLLMBackend:
     def __init__(self, model_hf: str, max_model_len: int, seed: int = 0, gpu_memory_utilization: float = 0.9,
-                 language_model_only: bool = False):
+                 language_model_only: bool = False, hybrid: bool = True, thinking_only: bool = False, **_):
         from transformers import AutoTokenizer
         from vllm import LLM
         self.tok = AutoTokenizer.from_pretrained(model_hf)
+        self.hybrid, self.thinking_only = hybrid, thinking_only
         kwargs = dict(model=model_hf, max_model_len=max_model_len, seed=seed,
                       gpu_memory_utilization=gpu_memory_utilization, enable_prefix_caching=True)
         if language_model_only:
@@ -112,4 +137,27 @@ class VLLMBackend:
         tokenize, expand each prompt n_samples times with distinct seeds, then either
         (a) thinking=False: one llm.generate with max_tokens=answer_max_tokens, or
         (b) thinking=True: two_pass_budgeted(...). Regroup [prompt][sample]."""
-        raise NotImplementedError
+        from vllm import SamplingParams, TokensPrompt  # lazy
+
+        if not thinking and budget != 0:
+            raise ValueError("thinking=False requires budget=0 (hard switch)")
+        if thinking and budget <= 0:
+            raise ValueError("thinking=True requires budget > 0")
+        prompts = [render_prompt(self.tok, m, thinking, self.hybrid, self.thinking_only) for m in list_of_messages]
+        prompt_ids = [self.tok(p, add_special_tokens=False).input_ids for p in prompts]
+        seeds = sample_seeds(seed, n_samples)
+        flat_ids = [p for p in prompt_ids for _ in seeds]
+        flat_seeds = [s for _ in prompt_ids for s in seeds]
+
+        if thinking:
+            gens = two_pass_budgeted(self.llm, self.tok, flat_ids, budget, answer_max_tokens, sampling, flat_seeds)
+        else:
+            sps = [SamplingParams(**sampling, max_tokens=answer_max_tokens, seed=s) for s in flat_seeds]
+            outs = self.llm.generate([TokensPrompt(prompt_token_ids=p) for p in flat_ids], sps)
+            gens = []
+            for p, o in zip(flat_ids, outs):
+                ids = list(o.outputs[0].token_ids)
+                _, answer, _ = split_think(ids, self.tok)
+                gens.append(Generation("", answer, 0, len(ids), False, IM_END in ids, len(p)))
+        n = len(seeds)
+        return [gens[i * n:(i + 1) * n] for i in range(len(prompt_ids))]
