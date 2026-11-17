@@ -2,8 +2,6 @@
 
 Does chain-of-thought help text-conditioned time-series forecasting on leakage-free data? A same-weights, budget-controlled study with open hybrid-reasoning LLMs (Qwen3), plus **FreshTS-26**, a refreshable text-conditioned forecasting evaluation set whose forecast origins all post-date the models' release.
 
-Target: NeurIPS 2026 FMTS workshop. Pre-registration and full design: [`SPEC.md`](SPEC.md). Human steps: [`RUNBOOK.md`](RUNBOOK.md). Implementer instructions: [`CLAUDE.md`](CLAUDE.md) (Claude Code reads it automatically; `IMPLEMENTER_PROMPT.md` for other agents).
-
 ```
 make test         # unit tests (CPU)
 make smoke        # end-to-end on 12 fixture windows with Qwen3-0.6B on CPU, < 10 min
